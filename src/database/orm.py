@@ -15,3 +15,10 @@ class DataBase:
             print("Database table dropped")
             await connection.run_sync(Base.metadata.create_all)
             print("Database table created")
+
+    @staticmethod
+    async def insert_user(name, surname, middle_name, email, password, role):
+        user = UserModel(name=name, surname=surname, middle_name=middle_name, email=email, password=password, role=role)
+        async with async_session() as session:
+            session.add(user)
+            await session.commit()
