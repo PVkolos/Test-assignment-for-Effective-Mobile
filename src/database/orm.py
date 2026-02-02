@@ -31,3 +31,15 @@ class DataBase:
             user = result.scalars().first()
             user.is_active = False
             await session.commit()
+
+    @staticmethod
+    async def update_user(email, name, surname, middle_name):
+        async with async_session() as session:
+            query = select(UserModel).where(UserModel.email == email)
+            result = await session.execute(query)
+            user = result.scalars().first()
+            if name is not None: user.name = name
+            if surname is not None: user.surname = surname
+            if middle_name is not None: user.middle_name = middle_name
+
+            await session.commit()

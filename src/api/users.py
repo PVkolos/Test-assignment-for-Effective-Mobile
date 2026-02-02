@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, status, Path
+from fastapi import APIRouter, Body, HTTPException, status, Path, Query
 from typing import Annotated, List, Dict, TYPE_CHECKING
 from sqlalchemy.exc import IntegrityError
 
@@ -29,6 +29,15 @@ async def add_user(user: Annotated[CreateUser, Body(..., example={
 @router_users.post('/users/delete/{email}', tags=['Работа с пользователями'], summary='Дезактивация пользователя')
 async def delete_user(email: Annotated[str, Path(..., title='email пользователя для удаления')]
                 ) -> Dict[str, int]:
-    print(email)
     await DataBase.delete_user(email)
+    return {'response': 200}
+
+
+@router_users.post('/users/change/{email}', tags=['Работа с пользователями'], summary='Изменение данных пользователя')
+async def change_data(email: Annotated[str, Path(..., title='email пользователя для удаления')],
+                      name: Annotated[str | None, Query(title='Новое имя')] = None,
+                      surname: Annotated[str | None, Query(title='Новое фамилия')] = None,
+                      middle_name: Annotated[str | None, Query(title='Новое отчество')] = None,
+                ) -> Dict[str, int]:
+    await DataBase.update_user(email, name, surname, middle_name)
     return {'response': 200}
