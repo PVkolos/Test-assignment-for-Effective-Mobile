@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, Path
 from typing import Annotated, List, Dict, TYPE_CHECKING
+from sqlalchemy.exc import IntegrityError
 
 from src.database.orm import DataBase
 from src.schemas.user_schema import CreateUser
@@ -18,5 +19,16 @@ async def add_user(user: Annotated[CreateUser, Body(..., example={
                                                                     "role": "Роль пользователя"
                                                                 })],
                    ):
-    await DataBase.insert_user(user.name, user.surname, user.middle_name, user.email, utils.hash_password(user.password), user.role)
+    try:
+        await DataBase.insert_user(user.name, user.surname, user.middle_name, user.email, utils.hash_password(user.password), user.role)
+    except IntegrityError as error:
+        raise HTTPException(401, 'Такой еmail уже зарегистрирован')
     return {'response': user.name, }
+
+
+@router_users.post('/users/delete/{email}', tags=['Работа с пользователями'], summary='Дезактивация пользователя')
+async def delete_user(email: Annotated[str, Path(..., title='email пользователя для удаления')]
+                ) -> Dict[str, int]:
+    print(email)
+    await DataBase.delete_user(email)
+    return {'response': 200}

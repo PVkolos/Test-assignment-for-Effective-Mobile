@@ -22,3 +22,12 @@ class DataBase:
         async with async_session() as session:
             session.add(user)
             await session.commit()
+
+    @staticmethod
+    async def delete_user(email):
+        async with async_session() as session:
+            query = select(UserModel).where(UserModel.email == email)
+            result = await session.execute(query)
+            user = result.scalars().first()
+            user.is_active = False
+            await session.commit()
