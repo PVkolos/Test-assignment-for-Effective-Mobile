@@ -2,9 +2,20 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from database.orm import DataBase
 
 from api import router_main
-app = FastAPI()
+
+
+@asynccontextmanager
+async def create_db_table(app: FastAPI):
+    await DataBase.create_table()
+    yield
+
+
+app = FastAPI(lifespan=create_db_table)
+app.include_router(router_main)
+
 
 @app.get("/")
 async def root() -> str:

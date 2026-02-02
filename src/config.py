@@ -27,9 +27,15 @@ class DB_Settings(ConfigBase):
         return f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
+class Roles(BaseModel):
+    admin: str = 'admin'
+    user: str = 'user'
+    guest: str = 'guest'
+
 
 class Settings:
     db: DB_Settings = DB_Settings()
+    roles: Roles = Roles()
 
 
 settings = Settings()
