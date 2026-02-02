@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Body, HTTPException, status, Path, Query
-from typing import Annotated, List, Dict, TYPE_CHECKING
+from fastapi import APIRouter, Body, HTTPException, status, Path, Query, Depends
+from typing import Annotated, List, Dict
 from sqlalchemy.exc import IntegrityError
 
 from src.database.orm import DataBase
-from src.schemas.user_schema import CreateUser
+
+from src.schemas.user_schema import CreateUser, User
+from src.schemas.auth_schemas import TokenInfo
+
 from . import utils
 router_users = APIRouter()
 
@@ -41,3 +44,21 @@ async def change_data(email: Annotated[str, Path(..., title='email пользо�
                 ) -> Dict[str, int]:
     await DataBase.update_user(email, name, surname, middle_name)
     return {'response': 200}
+
+
+@router_users.post('/users/login',
+                   tags=['Работа с пользователями'],
+                   summary='Войти в аккаунт (выпустить токен)',
+                   response_model=TokenInfo, response_model_exclude_none=True)
+async def login_user(
+        user: User = Depends(utils.validate_user_login)
+    ) -> TokenInfo:
+
+    access_token = utils.create_access_jwt(user)
+    refresh_token = utils.create_refresh_jwt(user)
+    return TokenInfo(access_token=access_token, refresh_token=refresh_token)
+
+
+@router_users.get('/users/check_auth', tags=['Работа с пользователями'], summary='Проверка авторизации')
+async def check_auth(user: Annotated[User, Depends(utils.check_token_auth)]) -> Dict:
+    return {'response': 200, 'name': user.name}

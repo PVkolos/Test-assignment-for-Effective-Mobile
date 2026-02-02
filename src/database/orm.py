@@ -4,8 +4,6 @@ from src.database.create_session import async_engine, async_session
 from src.database.models.base_model import Base
 from src.database.models.users_model import UserModel
 
-from sqlalchemy.orm import selectinload, contains_eager, joinedload
-
 
 class DataBase:
     @staticmethod
@@ -43,3 +41,14 @@ class DataBase:
             if middle_name is not None: user.middle_name = middle_name
 
             await session.commit()
+
+    @staticmethod
+    async def get_user(email):
+        async with async_session() as session:
+            query = (
+                select(UserModel)
+                .where(UserModel.email == email)
+            )
+            res = await session.execute(query)
+            result = res.scalars().first()
+            return result
