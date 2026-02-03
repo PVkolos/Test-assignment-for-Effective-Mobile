@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
-from database.orm import DataBase
+from src.database.orm import DataBase
 
-from api import router_main
+from src.api import router_main
 
 
 @asynccontextmanager
@@ -19,7 +19,7 @@ app.include_router(router_main)
 
 @app.get("/")
 async def root() -> str:
-    return 'Тестовый проект, демонстрирующий навыки работы со стеком FastAPI + PostrgreSQL + Docker для компании Effective Mobile'
+    return 'Тестовый проект, демонстрирующий навыки работы со стеком FastAPI + PostrgreSQL для компании Effective Mobile'
 
 
 if __name__ == "__main__":

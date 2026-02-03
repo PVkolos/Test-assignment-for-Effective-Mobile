@@ -23,7 +23,7 @@ class DataBase:
         async with async_engine.begin() as connection:
             await connection.run_sync(
                 Base.metadata.drop_all,
-                tables=[ResumeModel.__table__, UserModel.__table__, AccessRoleRuleModel.__table__]
+                # tables=[ResumeModel.__table__, UserModel.__table__, AccessRoleRuleModel.__table__]
             )
             print("Database table dropped")
             await connection.run_sync(Base.metadata.create_all)
