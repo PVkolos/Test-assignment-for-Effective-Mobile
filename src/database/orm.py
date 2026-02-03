@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from src.schemas.resume_schema import Resume
 
 from src.database.create_session import async_engine, async_session
 
@@ -112,12 +113,12 @@ class DataBase:
             return result
 
     @staticmethod
-    async def get_all_resumes(email):
+    async def get_all_user_resumes(email):
         async with async_session() as session:
             query = (
-                select(UserModel.resumes)
-                .where(UserModel.email == email)
+                select(ResumeModel)
+                .where(ResumeModel.email == email)
             )
             res = await session.execute(query)
             result = res.unique().scalars().all()
-            return result
+            return [Resume.model_validate(var, from_attributes=True) for var in result]

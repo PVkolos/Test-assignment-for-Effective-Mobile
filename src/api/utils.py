@@ -121,11 +121,22 @@ def create_refresh_jwt(user: User) -> str:
     )
 
 
+def check_is_active(user: UserModel) -> bool:
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Пользователь удален'
+        )
+    return True
+
+
 def check_permissions(element_name: str, action: str, ):
     async def _permission_dependency(
             request: Request,
             user: UserModel = Depends(check_token_auth),
     ):
+        check_is_active(user)
+
         own_permission_col = f"{action}_permission"
         all_permission_col = f"{action}_all_permission"
 
@@ -133,21 +144,20 @@ def check_permissions(element_name: str, action: str, ):
         element_id = await DataBase.get_business_element_id(element_name)
 
         if not element_id:
-            raise HTTPException(status_code=500, detail=f"Элемент {element_name} не найден в БД")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Элемент {element_name} не найден в БД")
 
         # Ищу правило для связки Роль + Элемент в таблице access_roles_rules
         rule = await DataBase.get_rule(user, element_id)
 
         # Не найдена строка в таблице access_roles_rules для текущего action и element_id
         if not rule:
-            raise HTTPException(status_code=403, detail="Нет прав доступа")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет прав доступа")
 
         '''
         Действия, НЕ подразумевающие групповую политику (only "permission"). Например - создание. 
         Обработка каждого такого действия прописывается отдельно, здесь.
         '''
         # Проверяем, если действие - создание объекта и есть права на создание, пропускаем
-        print(rule.create_permission)
         if action == 'create' and rule.create_permission:
             return user
 
@@ -167,25 +177,31 @@ def check_permissions(element_name: str, action: str, ):
             changed_obj = request.path_params.get(obj_find) # получаем из параметров пути идентификатор объекта
 
             if changed_obj:
+                '''
+                Значение флага меняется на True, если element_name != user 
+                Это будет значить, что element_name - создан пользователем (резюме, статьи, видео ...)
+                (только тогда имеет смысл переменная owner_email)
+                '''
+                flag = False
                 if element_name == 'user':
                     if changed_obj == user.email:
                         return user
 
                 elif element_name == 'resume':
                     owner_email = await DataBase.get_owner_resume(obj_find)
+                    flag = True
 
-                # from src.models import ResumeModel
-                # obj_stmt = select(ResumeModel.owner_id).where(ResumeModel.id == int(changed_obj))
-                # owner_email = (await db.execute(obj_stmt)).scalar_one()
+                '''
+                Логика обработки остальных любых element_name будет идентичной с 'resume', 
+                но запрос к бд будет идти к другим таблицам
+                '''
 
-                if owner_email == user.email:
+                if flag and owner_email == user.email:
                     return user
-
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ запрещен: недостаточно прав"
         )
-
 
     return _permission_dependency

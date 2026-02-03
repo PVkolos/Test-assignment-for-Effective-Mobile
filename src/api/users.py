@@ -2,6 +2,8 @@ from fastapi import APIRouter, Body, HTTPException, status, Path, Query, Depends
 from typing import Annotated, List, Dict
 from sqlalchemy.exc import IntegrityError
 
+from pydantic import EmailStr
+
 from src.database.orm import DataBase
 
 from src.schemas.user_schema import CreateUser, User
@@ -40,8 +42,8 @@ async def delete_user(email: Annotated[str, Path(..., title='email пользо�
 
 
 @router_users.post('/users/change/{email}', tags=['Работа с пользователями'], summary='Изменение данных пользователя')
-async def change_data(email: Annotated[str, Path(..., title='email пользователя для удаления')],
-                      user: Annotated[User, Depends(utils.check_permissions("user", "create"))],
+async def change_data(email: Annotated[EmailStr, Path(..., title='email пользователя для удаления')],
+                      user: Annotated[User, Depends(utils.check_permissions("user", "update"))],
                       name: Annotated[str | None, Query(title='Новое имя')] = None,
                       surname: Annotated[str | None, Query(title='Новое фамилия')] = None,
                       middle_name: Annotated[str | None, Query(title='Новое отчество')] = None,

@@ -1,17 +1,18 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, Path
+from pydantic import EmailStr
+from typing import List, Annotated
 
 from src.database.orm import DataBase
-from src.schemas.resume_schema import CreateResume
+from src.schemas.resume_schema import CreateResume, Resume
 from src.database.models.resumes_model import ResumeModel
 from src.database.models.users_model import UserModel
 
-from .utils import check_permissions  # наша проверка прав
+from .utils import check_permissions
 
 router_resumes = APIRouter(tags=["Резюме"])
 
 
-@router_resumes.post("/resumes/add")
+@router_resumes.post("/resumes/add", summary='Создание резюме пользователю')
 async def create_resume(
         resume: CreateResume,
         user: UserModel = Depends(check_permissions("resume", "create")),
@@ -21,11 +22,11 @@ async def create_resume(
     return {'response': 200}
 
 
-@router_resumes.post("/resumes/read{user_email}")
-async def create_resume(
-        resume: CreateResume,
-        user: UserModel = Depends(check_permissions("resume", "read")),
-) -> dict[str, int]:
-    await DataBase.insert_resume(resume.name, resume.title, resume.description, resume.salary, user.email)
+@router_resumes.post("/resumes/read/{email}/", summary='Чтение резюме пользователя по email')
+async def read_resumes(
+        email: Annotated[EmailStr, Path(..., title='email пользователя, чьи резюме читаем')],
+        user: UserModel = Depends(check_permissions("user", "read")),
+) -> List[Resume]:
+    resumes = await DataBase.get_all_user_resumes(email)
 
-    return {'response': 200}
+    return resumes
