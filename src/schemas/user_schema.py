@@ -1,5 +1,7 @@
-from typing import Annotated
+from typing import Annotated, List, Any
 from pydantic import BaseModel, Field, EmailStr, model_validator
+
+from .resume_schema import Resume
 
 
 class CreateUser(BaseModel):
@@ -24,3 +26,9 @@ class CreateUser(BaseModel):
 class User(CreateUser):
     id: int
     is_active: bool
+
+
+class UserRelationship(User):
+    password: Annotated[str, Field(..., title="Пароль пользователя", max_length=500, min_length=5, repr=False)]
+    password_again: Any = None
+    resumes: List[Resume]

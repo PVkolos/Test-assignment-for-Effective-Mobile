@@ -5,6 +5,7 @@ from src.schemas.resume_schema import Resume
 from src.schemas.access_roles_rules_schema import AccessRolesRules
 from src.schemas.business_element_schema import ElementBusiness
 from src.schemas.role_schema import Role, RoleRelationship
+from src.schemas.user_schema import UserRelationship
 
 from src.database.create_session import async_engine, async_session
 
@@ -143,6 +144,17 @@ class DataBase:
             res = await session.execute(query)
             result = res.unique().scalars().all()
             return [Resume.model_validate(var, from_attributes=True) for var in result]
+
+    @staticmethod
+    async def get_all_resumes():
+        async with async_session() as session:
+            query = (
+                select(UserModel)
+                .options(selectinload(UserModel.resumes))
+            )
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
+            return [UserRelationship.model_validate(var, from_attributes=True) for var in result]
 
     @staticmethod
     async def get_all_business_elements():

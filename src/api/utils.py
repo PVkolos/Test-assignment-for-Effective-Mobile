@@ -130,7 +130,7 @@ def check_is_active(user: UserModel) -> bool:
     return True
 
 
-def check_permissions(element_name: str, action: str, ):
+def check_permissions(element_name: str, action: str, all_action: bool = False):
     async def _permission_dependency(
             request: Request,
             user: UserModel = Depends(check_token_auth),
@@ -165,6 +165,12 @@ def check_permissions(element_name: str, action: str, ):
         # Если разрешено ВСЁ (all_permission), то дальше можно не проверять
         if getattr(rule, all_permission_col, False):
             return user
+
+        if all_action: # Если требуется доступ не только к "своему", но и к общему
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Доступ запрещен: недостаточно прав!"
+            )
 
         # Если общее разрешение False, проверяем разрешение на свое
         if getattr(rule, own_permission_col, False):
@@ -201,7 +207,7 @@ def check_permissions(element_name: str, action: str, ):
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Доступ запрещен: недостаточно прав"
+            detail="Доступ запрещен: недостаточно прав!!"
         )
 
     return _permission_dependency
