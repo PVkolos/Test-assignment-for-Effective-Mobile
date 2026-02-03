@@ -29,7 +29,7 @@ async def get_roles() -> List[Role]:
 
 
 @router_admin.get('/get_access_roles_rules', summary='Получение списка всех прав всех групп')
-async def get_access_roles_rules() -> List[AccessRolesRules]:
+async def get_access_roles_rules():
     elements = await DataBase.get_access_roles_rules()
     return elements
 

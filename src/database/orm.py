@@ -4,7 +4,7 @@ from sqlalchemy.orm import selectinload
 from src.schemas.resume_schema import Resume
 from src.schemas.access_roles_rules_schema import AccessRolesRules
 from src.schemas.business_element_schema import ElementBusiness
-from src.schemas.role_schema import Role
+from src.schemas.role_schema import Role, RoleRelationship
 
 from src.database.create_session import async_engine, async_session
 
@@ -22,7 +22,7 @@ class DataBase:
         async with async_engine.begin() as connection:
             await connection.run_sync(
                 Base.metadata.drop_all,
-                tables=[ResumeModel.__table__]
+                tables=[ResumeModel.__table__, UserModel.__table__, AccessRoleRuleModel.__table__]
             )
             print("Database table dropped")
             await connection.run_sync(Base.metadata.create_all)
@@ -159,11 +159,12 @@ class DataBase:
     async def get_access_roles_rules():
         async with async_session() as session:
             query = (
-                select(AccessRoleRuleModel)
+                select(RoleModel)
+                .options(selectinload(RoleModel.rules))
             )
             res = await session.execute(query)
             result = res.unique().scalars().all()
-            return [AccessRolesRules.model_validate(var, from_attributes=True) for var in result]
+            return [RoleRelationship.model_validate(var, from_attributes=True) for var in result]
 
     @staticmethod
     async def check_role_id(role_id):
