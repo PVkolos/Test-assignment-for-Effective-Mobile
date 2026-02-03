@@ -26,6 +26,7 @@ async def add_user(user: Annotated[CreateUser, Body(..., example={
                                                                 })],
                     creator: Annotated[User, Depends(utils.check_permissions("user", "create"))]
                    ):
+    ''' Добавление пользователя в БД '''
     try:
         await DataBase.insert_user(user.name, user.surname, user.middle_name, user.email, utils.hash_password(user.password), user.role)
     except IntegrityError as error:
@@ -37,6 +38,7 @@ async def add_user(user: Annotated[CreateUser, Body(..., example={
 async def delete_user(email: Annotated[EmailStr, Path(..., title='email пользователя для удаления')],
                       user: Annotated[User, Depends(utils.check_permissions("user", "delete"))]
                 ) -> Dict[str, int]:
+    ''' Удаление пользователя из БД '''
     if not await DataBase.user_exist(email):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -53,6 +55,7 @@ async def change_data(email: Annotated[EmailStr, Path(..., title='email поль
                       surname: Annotated[str | None, Query(title='Новое фамилия')] = None,
                       middle_name: Annotated[str | None, Query(title='Новое отчество')] = None,
                 ) -> Dict[str, int]:
+    ''' Изменение данных пользователя по его email '''
 
     if not await DataBase.user_exist(email):
         raise HTTPException(
@@ -67,9 +70,8 @@ async def change_data(email: Annotated[EmailStr, Path(..., title='email поль
 @router_users.post('/login',
                    summary='Войти в аккаунт (выпустить токен)',
                    response_model=TokenInfo, response_model_exclude_none=True)
-async def login_user(
-        user: User = Depends(utils.validate_user_login)
-    ) -> TokenInfo:
+async def login_user(user: User = Depends(utils.validate_user_login)) -> TokenInfo:
+    ''' Выпуск access jwt и refresh jwt токена '''
 
     access_token = utils.create_access_jwt(user)
     refresh_token = utils.create_refresh_jwt(user)
@@ -78,10 +80,12 @@ async def login_user(
 
 @router_users.get('/check_auth', summary='Проверка авторизации')
 async def check_auth(user: Annotated[User, Depends(utils.check_token_auth)]) -> Dict:
+    ''' По получаемому токену в заголовке запроса определяет пользователя '''
     return {'response': 200, 'name': user.name}
 
 
 @router_users.post('/generate-access', summary='Перевыпуск access jwt',
                    response_model=TokenInfo, response_model_exclude_none=True)
 async def generate_access_jwt(user: User = Depends(utils.check_token_auth_refresh)):
+    ''' Перевыпуск access токена по refresh токену '''
     return TokenInfo(access_token=utils.create_access_jwt(user=user))

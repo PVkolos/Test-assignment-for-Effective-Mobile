@@ -6,6 +6,6 @@ from .admin import router_admin
 
 
 router_main = APIRouter()
-router_main.include_router(router_users)
-router_main.include_router(router_resumes)
-router_main.include_router(router_admin)
+router_main.include_router(router_users) # Подключаем роутер группы "users"
+router_main.include_router(router_resumes) # Подключаем роутер группы "resumes"
+router_main.include_router(router_admin) # Подключаем роутер группы "resumes"
