@@ -205,3 +205,9 @@ def check_permissions(element_name: str, action: str, ):
         )
 
     return _permission_dependency
+
+
+async def check_is_admin(user: Annotated[User, Depends(check_token_auth)]) -> User:
+    if user.role != "admin": #TODO плохое решение, лучше было бы создать группы в бд, где под ключевым словом "admin" хранились бы роли с правами админа
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет прав на выполнение операции!")
+    return user

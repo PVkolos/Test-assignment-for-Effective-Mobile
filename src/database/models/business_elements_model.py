@@ -5,13 +5,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base_model import Base
 
 if TYPE_CHECKING:
-    from .rights_matrix_model import AccessRoleRule
+    from .rights_matrix_model import AccessRoleRuleModel
 
 
-class BusinessElement(Base):
+class BusinessElementModel(Base):
     __tablename__ = "business_elements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True)
 
-    rules: Mapped[List["AccessRoleRule"]] = relationship(back_populates="element")
+    rules: Mapped[List["AccessRoleRuleModel"]] = relationship(back_populates="element")

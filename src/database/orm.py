@@ -1,14 +1,18 @@
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+
 from src.schemas.resume_schema import Resume
+from src.schemas.access_roles_rules_schema import AccessRolesRules
+from src.schemas.business_element_schema import ElementBusiness
+from src.schemas.role_schema import Role
 
 from src.database.create_session import async_engine, async_session
 
 from src.database.models.base_model import Base
 from src.database.models.users_model import UserModel
-from src.database.models.roles_model import Role
-from src.database.models.rights_matrix_model import AccessRoleRule
-from src.database.models.business_elements_model import BusinessElement
+from src.database.models.roles_model import RoleModel
+from src.database.models.rights_matrix_model import AccessRoleRuleModel
+from src.database.models.business_elements_model import BusinessElementModel
 from src.database.models.resumes_model import ResumeModel
 
 
@@ -36,6 +40,23 @@ class DataBase:
         resume = ResumeModel(name=name, email=email, title=title, description=description, salary=salary)
         async with async_session() as session:
             session.add(resume)
+            await session.commit()
+
+    @staticmethod
+    async def insert_rule(role_id, element_id, read_permission, read_all_permission, create_permission, update_permission, update_all_permission, delete_permission, delete_all_permission):
+        rule = AccessRoleRuleModel(
+            role_id=role_id,
+            element_id=element_id,
+            read_permission=read_permission,
+            read_all_permission=read_all_permission,
+            create_permission=create_permission,
+            update_permission=update_permission,
+            update_all_permission=update_all_permission,
+            delete_permission=delete_permission,
+            delete_all_permission=delete_all_permission
+        )
+        async with async_session() as session:
+            session.add(rule)
             await session.commit()
 
     @staticmethod
@@ -74,8 +95,8 @@ class DataBase:
     async def get_business_element_id(element_name):
         async with async_session() as session:
             query = (
-                select(BusinessElement.id)
-                .where(BusinessElement.name == element_name)
+                select(BusinessElementModel.id)
+                .where(BusinessElementModel.name == element_name)
             )
             res = await session.execute(query)
             result = res.scalars().first()
@@ -85,16 +106,16 @@ class DataBase:
     async def get_rule(user, element_id):
         async with async_session() as session:
             role_stmt = (
-                select(Role.id)
-                .where(Role.name == user.role)
+                select(RoleModel.id)
+                .where(RoleModel.name == user.role)
             )
             role = await session.execute(role_stmt)
             user_role = role.scalars().first()
             query = (
-                select(AccessRoleRule)
+                select(AccessRoleRuleModel)
                 .where(
-                    AccessRoleRule.role_id == user_role,
-                    AccessRoleRule.element_id == element_id
+                    AccessRoleRuleModel.role_id == user_role,
+                    AccessRoleRuleModel.element_id == element_id
                 )
             )
             res = await session.execute(query)
@@ -122,3 +143,92 @@ class DataBase:
             res = await session.execute(query)
             result = res.unique().scalars().all()
             return [Resume.model_validate(var, from_attributes=True) for var in result]
+
+    @staticmethod
+    async def get_all_business_elements():
+        async with async_session() as session:
+            query = (
+                select(BusinessElementModel)
+            )
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
+            return [ElementBusiness.model_validate(var, from_attributes=True) for var in result]
+
+
+    @staticmethod
+    async def get_access_roles_rules():
+        async with async_session() as session:
+            query = (
+                select(AccessRoleRuleModel)
+            )
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
+            return [AccessRolesRules.model_validate(var, from_attributes=True) for var in result]
+
+    @staticmethod
+    async def check_role_id(role_id):
+        async with async_session() as session:
+            query = (
+                select(RoleModel)
+                .where(RoleModel.id == role_id)
+            )
+            res = await session.execute(query)
+            result = res.scalars().one_or_none()
+            return result
+
+    @staticmethod
+    async def check_element_id(element_id):
+        async with async_session() as session:
+            query = (
+                select(BusinessElementModel)
+                .where(BusinessElementModel.id == element_id)
+            )
+            res = await session.execute(query)
+            result = res.scalars().one_or_none()
+            return result
+
+    @staticmethod
+    async def check_rule_exists(element_id, role_id, rule_id=None):
+        async with async_session() as session:
+            if not rule_id:
+                query = (
+                    select(AccessRoleRuleModel)
+                    .where(
+                        AccessRoleRuleModel.element_id == element_id,
+                        AccessRoleRuleModel.role_id == role_id
+                    )
+                )
+                res = await session.execute(query)
+                result = res.scalars().one_or_none()
+                return result
+            else:
+                rule = await session.get(AccessRoleRuleModel, rule_id)
+                return rule
+
+    @staticmethod
+    async def delete_rule(rule_id):
+        async with async_session() as session:
+            rule = await session.get(AccessRoleRuleModel, rule_id)
+            await session.delete(rule)
+            await session.commit()
+
+    @staticmethod
+    async def get_all_roles():
+        async with async_session() as session:
+            query = (
+                select(RoleModel)
+            )
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
+            return [Role.model_validate(var, from_attributes=True) for var in result]
+
+    @staticmethod
+    async def user_exist(email):
+        async with async_session() as session:
+            query = (
+                select(UserModel)
+                .where(UserModel.email == email)
+            )
+            res = await session.execute(query)
+            result = res.scalars().one_or_none()
+            return result

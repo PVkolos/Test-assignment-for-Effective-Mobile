@@ -5,12 +5,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base_model import Base
 
 if TYPE_CHECKING:
-    from .roles_model import Role
-    from .business_elements_model import BusinessElement
+    from .roles_model import RoleModel
+    from .business_elements_model import BusinessElementModel
 
 
 # Матрица прав доступа
-class AccessRoleRule(Base):
+class AccessRoleRuleModel(Base):
     __tablename__ = "access_roles_rules"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -32,5 +32,5 @@ class AccessRoleRule(Base):
     delete_permission: Mapped[bool] = mapped_column(Boolean, default=False)
     delete_all_permission: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    role: Mapped["Role"] = relationship(back_populates="rules")
-    element: Mapped["BusinessElement"] = relationship(back_populates="rules")
+    role: Mapped["RoleModel"] = relationship(back_populates="rules")
+    element: Mapped["BusinessElementModel"] = relationship(back_populates="rules")

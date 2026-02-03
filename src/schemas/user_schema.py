@@ -1,6 +1,5 @@
 from typing import Annotated
 from pydantic import BaseModel, Field, EmailStr, model_validator
-from src.enums import Role
 
 
 class CreateUser(BaseModel):
