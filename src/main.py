@@ -9,12 +9,12 @@ from src.api import router_main
 
 @asynccontextmanager
 async def create_db_table(app: FastAPI):
-    # await DataBase.create_table()
+    # await DataBase.create_table() # Жизненный цикл - создание таблиц перед запуском приложения
     yield
 
 
 app = FastAPI(lifespan=create_db_table)
-app.include_router(router_main)
+app.include_router(router_main) # Подключаем основной роутер
 
 
 @app.get("/")

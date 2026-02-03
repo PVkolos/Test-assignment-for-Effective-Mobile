@@ -11,25 +11,31 @@ from . import utils
 
 router_admin = APIRouter(
     tags=["Администрирование системы прав доступа"],
-    dependencies=[Depends(utils.check_is_admin)],
+    dependencies=[Depends(utils.check_is_admin)], # Зависимость, проверяем пользователя на права администратора
     prefix="/admin",
 )
 
 
 @router_admin.get('/get_business_elements', summary='Получение списка всех бизнес блоков приложения')
 async def get_business_elements() -> List[ElementBusiness]:
+    ''' Получение списка всех блоков приложения '''
+
     elements = await DataBase.get_all_business_elements()
     return elements
 
 
 @router_admin.get('/get_roles', summary='Получение списка всех ролей')
 async def get_roles() -> List[Role]:
+    ''' Получение списка всех ролей '''
+
     roles = await DataBase.get_all_roles()
     return roles
 
 
 @router_admin.get('/get_access_roles_rules', summary='Получение списка всех прав всех групп')
 async def get_access_roles_rules():
+    ''' Получение списка всех ролей с подгруженными relationship - правами доступа. '''
+
     elements = await DataBase.get_access_roles_rules()
     return elements
 
@@ -46,6 +52,7 @@ async def create_new_rule(rule: Annotated[CreateAccessRolesRules, Body(..., exam
                                                                     "delete_permission": "Разрешено удаление своего",
                                                                     "delete_all_permission": "Разрешено удаление общего"
                                                                 })]) -> dict[str, int]:
+    ''' Создание новой роли, принимаем pydantic схему CreateAccessRolesRules, валидируем данные и отправляем в БД '''
     if not await DataBase.check_role_id(rule.role_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Роли с {rule.role_id=} не найдено')
     if not await DataBase.check_element_id(rule.element_id):
@@ -60,8 +67,9 @@ async def create_new_rule(rule: Annotated[CreateAccessRolesRules, Body(..., exam
 
 
 @router_admin.delete('/delete_rule/{rule_id}', summary='Удаление правила')
-async def delete_user(rule_id: Annotated[int, Path(..., title='ID правила')],
+async def delete_rule(rule_id: Annotated[int, Path(..., title='ID правила')],
                 ) -> Dict[str, int]:
+    ''' Удаление правила доступа из БД '''
     if not await DataBase.check_rule_exists(None, None, rule_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Правило с {rule_id=} не найдено')
     await DataBase.delete_rule(rule_id)

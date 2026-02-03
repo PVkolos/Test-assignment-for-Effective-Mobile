@@ -20,6 +20,7 @@ async def create_resume(
         resume: CreateResume,
         user: UserModel = Depends(check_permissions("resume", "create")),
     ) -> dict[str, int]:
+    ''' Создание резюме. Получаем pydantic схему резюме и создателя (провалидированного на права) '''
 
     await DataBase.insert_resume(resume.name, resume.title, resume.description, resume.salary, user.email)
     return {'response': 200}
@@ -29,6 +30,7 @@ async def create_resume(
 async def read_all_resumes(
         user: Annotated[User, Depends(check_permissions("resume", "read", all_action=True))]
     ):
+    ''' Чтение всех пользователей с их relationship - resumes. all_action=True т.к. чтение не своего резюме, а всех '''
     users = await DataBase.get_all_resumes()
     return users
 
@@ -38,6 +40,7 @@ async def read_resumes_user(
         email: Annotated[EmailStr, Path(..., title='email пользователя, чьи резюме читаем')],
         user: UserModel = Depends(check_permissions("user", "read")),
     ) -> List[Resume]:
+    ''' Получение резюме пользователя, email которого принимаем '''
 
     resumes = await DataBase.get_all_user_resumes(email)
     return resumes
