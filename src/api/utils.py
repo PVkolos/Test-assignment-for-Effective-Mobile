@@ -4,9 +4,10 @@ from typing import Annotated
 
 import jwt
 from src.config import settings
-from fastapi import HTTPException, status, Depends, Body
+from fastapi import HTTPException, status, Depends, Body, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from src.database.orm import DataBase
+from src.database.models.users_model import UserModel
 from src.schemas.user_schema import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
@@ -54,11 +55,20 @@ async def check_auth(
 
 async def check_token_auth(
         payload: dict = Depends(check_auth)
-) -> User:
+    ) -> User:
     validate_token_type(payload, settings.const.TOKEN_ACCESS_FIELD)
     if user := await DataBase.get_user(payload.get("sub")):
         return user
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Пользователь не найден')
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Пользователь не найден')
+
+
+async def check_token_auth_refresh(
+        payload: dict = Depends(check_auth)
+    ) -> User:
+    validate_token_type(payload, settings.const.TOKEN_REFRESH_FIELD)
+    if user := await DataBase.get_user(payload.get("sub")):
+        return user
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Пользователь не найден')
 
 
 def encode_jwt(
@@ -109,3 +119,73 @@ def create_refresh_jwt(user: User) -> str:
         token_type=settings.const.TOKEN_REFRESH_FIELD,
         expire=settings.auth_jwt.refresh_token_expire_days,
     )
+
+
+def check_permissions(element_name: str, action: str, ):
+    async def _permission_dependency(
+            request: Request,
+            user: UserModel = Depends(check_token_auth),
+    ):
+        own_permission_col = f"{action}_permission"
+        all_permission_col = f"{action}_all_permission"
+
+        # Получаю ID элемента
+        element_id = await DataBase.get_business_element_id(element_name)
+
+        if not element_id:
+            raise HTTPException(status_code=500, detail=f"Элемент {element_name} не найден в БД")
+
+        # Ищу правило для связки Роль + Элемент в таблице access_roles_rules
+        rule = await DataBase.get_rule(user, element_id)
+
+        # Не найдена строка в таблице access_roles_rules для текущего action и element_id
+        if not rule:
+            raise HTTPException(status_code=403, detail="Нет прав доступа")
+
+        '''
+        Действия, НЕ подразумевающие групповую политику (only "permission"). Например - создание. 
+        Обработка каждого такого действия прописывается отдельно, здесь.
+        '''
+        # Проверяем, если действие - создание объекта и есть права на создание, пропускаем
+        print(rule.create_permission)
+        if action == 'create' and rule.create_permission:
+            return user
+
+        '''Действия, подразумевающие групповую политику (permission/all_permission). Например - удаление, редактирование, чтение'''
+        # Если разрешено ВСЁ (all_permission), то дальше можно не проверять
+        if getattr(rule, all_permission_col, False):
+            return user
+
+        # Если общее разрешение False, проверяем разрешение на свое
+        if getattr(rule, own_permission_col, False):
+            obj_find = ''
+            if element_name == 'user': # Действие производится над бизнес-логикой "user".
+                obj_find = 'email'
+            elif element_name == 'resume': # Действие производится над бизнес-логикой "resume"
+                obj_find = 'id'
+
+            changed_obj = request.path_params.get(obj_find) # получаем из параметров пути идентификатор объекта
+
+            if changed_obj:
+                if element_name == 'user':
+                    if changed_obj == user.email:
+                        return user
+
+                elif element_name == 'resume':
+                    owner_email = await DataBase.get_owner_resume(obj_find)
+
+                # from src.models import ResumeModel
+                # obj_stmt = select(ResumeModel.owner_id).where(ResumeModel.id == int(changed_obj))
+                # owner_email = (await db.execute(obj_stmt)).scalar_one()
+
+                if owner_email == user.email:
+                    return user
+
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ запрещен: недостаточно прав"
+        )
+
+
+    return _permission_dependency

@@ -8,6 +8,7 @@ from src.schemas.user_schema import CreateUser, User
 from src.schemas.auth_schemas import TokenInfo
 
 from . import utils
+from src.config import settings
 router_users = APIRouter()
 
 
@@ -21,16 +22,18 @@ async def add_user(user: Annotated[CreateUser, Body(..., example={
                                                                     "email": "email",
                                                                     "role": "Роль пользователя"
                                                                 })],
+                    creator: Annotated[User, Depends(utils.check_permissions("user", "create"))]
                    ):
     try:
         await DataBase.insert_user(user.name, user.surname, user.middle_name, user.email, utils.hash_password(user.password), user.role)
     except IntegrityError as error:
-        raise HTTPException(401, 'Такой еmail уже зарегистрирован')
+        raise HTTPException(401, 'Такой email уже зарегистрирован')
     return {'response': user.name, }
 
 
 @router_users.post('/users/delete/{email}', tags=['Работа с пользователями'], summary='Дезактивация пользователя')
-async def delete_user(email: Annotated[str, Path(..., title='email пользователя для удаления')]
+async def delete_user(email: Annotated[str, Path(..., title='email пользователя для удаления')],
+                      user: Annotated[User, Depends(utils.check_permissions("user", "delete"))]
                 ) -> Dict[str, int]:
     await DataBase.delete_user(email)
     return {'response': 200}
@@ -38,6 +41,7 @@ async def delete_user(email: Annotated[str, Path(..., title='email пользо�
 
 @router_users.post('/users/change/{email}', tags=['Работа с пользователями'], summary='Изменение данных пользователя')
 async def change_data(email: Annotated[str, Path(..., title='email пользователя для удаления')],
+                      user: Annotated[User, Depends(utils.check_permissions("user", "create"))],
                       name: Annotated[str | None, Query(title='Новое имя')] = None,
                       surname: Annotated[str | None, Query(title='Новое фамилия')] = None,
                       middle_name: Annotated[str | None, Query(title='Новое отчество')] = None,
@@ -62,3 +66,9 @@ async def login_user(
 @router_users.get('/users/check_auth', tags=['Работа с пользователями'], summary='Проверка авторизации')
 async def check_auth(user: Annotated[User, Depends(utils.check_token_auth)]) -> Dict:
     return {'response': 200, 'name': user.name}
+
+
+@router_users.post('/users/generate-access', tags=['Работа с пользователями'], summary='Перевыпуск access jwt',
+                   response_model=TokenInfo, response_model_exclude_none=True)
+async def generate_access_jwt(user: User = Depends(utils.check_token_auth_refresh)):
+    return TokenInfo(access_token=utils.create_access_jwt(user=user))

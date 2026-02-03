@@ -10,7 +10,7 @@ class CreateUser(BaseModel):
     password: Annotated[str, Field(..., title="Пароль пользователя", max_length=50, min_length=5, repr=False)]
     password_again: Annotated[str, Field(..., title="Повтор пароля пользователя", max_length=50, min_length=5, repr=False)]
     email: Annotated[EmailStr, Field(..., title="email пользователя")]
-    role: Annotated[Role, Field(..., title='Роль пользователя')]
+    role: Annotated[str, Field(..., title='Роль пользователя')]
 
     @model_validator(mode='after')
     def check_passwords_match(self) -> 'CreateUser':

@@ -1,15 +1,24 @@
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
 from src.database.create_session import async_engine, async_session
 
 from src.database.models.base_model import Base
 from src.database.models.users_model import UserModel
+from src.database.models.roles_model import Role
+from src.database.models.rights_matrix_model import AccessRoleRule
+from src.database.models.business_elements_model import BusinessElement
+from src.database.models.resumes_model import ResumeModel
 
 
 class DataBase:
     @staticmethod
     async def create_table():
         async with async_engine.begin() as connection:
-            await connection.run_sync(Base.metadata.drop_all)
+            await connection.run_sync(
+                Base.metadata.drop_all,
+                tables=[ResumeModel.__table__]
+            )
             print("Database table dropped")
             await connection.run_sync(Base.metadata.create_all)
             print("Database table created")
@@ -19,6 +28,13 @@ class DataBase:
         user = UserModel(name=name, surname=surname, middle_name=middle_name, email=email, password=password, role=role)
         async with async_session() as session:
             session.add(user)
+            await session.commit()
+
+    @staticmethod
+    async def insert_resume(name, title, description, salary, email):
+        resume = ResumeModel(name=name, email=email, title=title, description=description, salary=salary)
+        async with async_session() as session:
+            session.add(resume)
             await session.commit()
 
     @staticmethod
@@ -51,4 +67,57 @@ class DataBase:
             )
             res = await session.execute(query)
             result = res.scalars().first()
+            return result
+
+    @staticmethod
+    async def get_business_element_id(element_name):
+        async with async_session() as session:
+            query = (
+                select(BusinessElement.id)
+                .where(BusinessElement.name == element_name)
+            )
+            res = await session.execute(query)
+            result = res.scalars().first()
+            return result
+
+    @staticmethod
+    async def get_rule(user, element_id):
+        async with async_session() as session:
+            role_stmt = (
+                select(Role.id)
+                .where(Role.name == user.role)
+            )
+            role = await session.execute(role_stmt)
+            user_role = role.scalars().first()
+            query = (
+                select(AccessRoleRule)
+                .where(
+                    AccessRoleRule.role_id == user_role,
+                    AccessRoleRule.element_id == element_id
+                )
+            )
+            res = await session.execute(query)
+            result = res.scalars().first()
+            return result
+
+    @staticmethod
+    async def get_owner_resume(resume_id):
+        async with async_session() as session:
+            query = (
+                select(ResumeModel.email)
+                .where(ResumeModel.id == resume_id)
+            )
+            res = await session.execute(query)
+            result = res.scalars().first()
+            return result
+
+    @staticmethod
+    async def get_all_resumes(email):
+        async with async_session() as session:
+            query = (
+                select(UserModel.resumes)
+                .where(UserModel.email == email)
+            )
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
             return result
